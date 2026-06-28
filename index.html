@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PRO+</title>
+  <meta name="description" content="Centralisateur de facturation pro" />
+  <meta name="theme-color" content="#0F172A" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PRO+" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link rel="icon" href="icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background: #0F172A; }
+    #install-banner {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #1a1a1a; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; z-index: 9999; gap: 12px;
+      font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    #install-banner .info { display: flex; align-items: center; gap: 10px; flex: 1; }
+    #install-banner img.icon { width: 36px; height: 36px; border-radius: 8px; }
+    #install-banner .title { font-weight: 600; font-size: 14px; }
+    #install-banner .sub { font-size: 12px; opacity: 0.6; margin-top: 1px; }
+    #install-btn {
+      background: #10B981; color: #fff; border: none;
+      border-radius: 8px; padding: 8px 14px;
+      font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    #close-banner {
+      background: none; border: none;
+      color: rgba(255,255,255,0.5); font-size: 22px;
+      cursor: pointer; padding: 4px; line-height: 1;
+    }
+    #app-frame {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%; border: none;
+    }
+    #app-frame.with-banner { top: 57px; height: calc(100% - 57px); }
+    #ios-hint {
+      display: none; position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #1a1a1a; color: #fff;
+      padding: 16px 20px 28px; font-size: 14px; text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      z-index: 9999; border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+    }
+    #ios-hint-close {
+      position: absolute; top: 10px; right: 14px;
+      background: none; border: none;
+      color: rgba(255,255,255,0.5); font-size: 20px; cursor: pointer;
+    }
+    #ios-hint .share-icon { font-size: 22px; margin: 8px 0 4px; display: block; }
+  </style>
+</head>
+<body>
+
+  <div id="install-banner" style="display:none;">
+    <div class="info">
+      <img class="icon" src="icon.png" alt="Logo" />
+      <div>
+        <div class="title">PRO+</div>
+        <div class="sub">Installer l'application</div>
+      </div>
+    </div>
+    <button id="install-btn">Installer</button>
+    <button id="close-banner" aria-label="Fermer">×</button>
+  </div>
+
+  <div id="ios-hint">
+    <button id="ios-hint-close">×</button>
+    <strong>Installer sur iPhone / iPad</strong>
+    <span class="share-icon">⬆</span>
+    Appuyez sur <strong>Partager</strong> puis <strong>"Sur l'écran d'accueil"</strong>
+  </div>
+
+  <iframe
+    id="app-frame"
+    src="https://metaplik.github.io/FACTURATION-/"
+    title="PRO+"
+    allow="fullscreen"
+  ></iframe>
+
+  <script>
+    const banner = document.getElementById("install-banner");
+    const frame = document.getElementById("app-frame");
+    const installBtn = document.getElementById("install-btn");
+    const closeBanner = document.getElementById("close-banner");
+    const iosHint = document.getElementById("ios-hint");
+    const iosHintClose = document.getElementById("ios-hint-close");
+
+    let deferredPrompt = null;
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+    const dismissed = sessionStorage.getItem("banner-dismissed");
+
+    if (!isStandalone && !dismissed && isIOS) {
+      setTimeout(() => { iosHint.style.display = "block"; }, 1500);
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!isStandalone && !dismissed) {
+        banner.style.display = "flex";
+        frame.classList.add("with-banner");
+      }
+    });
+
+    installBtn.addEventListener("click", async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (outcome === "accepted") {
+          banner.style.display = "none";
+          frame.classList.remove("with-banner");
+        }
+      }
+    });
+
+    closeBanner.addEventListener("click", () => {
+      banner.style.display = "none";
+      frame.classList.remove("with-banner");
+      sessionStorage.setItem("banner-dismissed", "1");
+    });
+
+    iosHintClose.addEventListener("click", () => {
+      iosHint.style.display = "none";
+      sessionStorage.setItem("banner-dismissed", "1");
+    });
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>
